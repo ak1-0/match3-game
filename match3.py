@@ -1,16 +1,13 @@
 import pygame
 import random
-import sys
 
 # Инициализация Pygame
 pygame.init()
 
-# Параметры игры
-SCREEN_WIDTH = 400
-SCREEN_HEIGHT = 400
-GRID_SIZE = 8  # Размер сетки
-TILE_SIZE = 50  # Размер каждой плитки
-FPS = 60
+# Размеры экрана и поля
+WIDTH, HEIGHT = 600, 600
+ROWS, COLS = 8, 8
+SQUARE_SIZE = WIDTH // COLS
 
 # Цвета
 WHITE = (255, 255, 255)
@@ -19,66 +16,69 @@ RED = (255, 0, 0)
 GREEN = (0, 255, 0)
 YELLOW = (255, 255, 0)
 
-# Список цветов для плиток
+# Цвета для кубиков
 COLORS = [BLUE, RED, GREEN, YELLOW]
 
-# Экран игры
-screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-pygame.display.set_caption("Match 3 Game")
+# Создание экрана
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("Match 3")
 
-# Игровая сетка (матрица)
-grid = [[random.choice(COLORS) for _ in range(GRID_SIZE)] for _ in range(GRID_SIZE)]
+# Сетка для игры
+grid = [[random.choice(COLORS) for _ in range(COLS)] for _ in range(ROWS)]
+
+# Хранение информации о выбранных квадратах
+selected_square = None
+
 
 def draw_grid():
-    for y in range(GRID_SIZE):
-        for x in range(GRID_SIZE):
-            color = grid[y][x]
-            pygame.draw.rect(screen, color, (x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE))
-            pygame.draw.rect(screen, WHITE, (x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE), 2)
+    for row in range(ROWS):
+        for col in range(COLS):
+            color = grid[row][col]
+            pygame.draw.rect(screen, color, (col * SQUARE_SIZE, row * SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE))
+            pygame.draw.rect(screen, WHITE, (col * SQUARE_SIZE, row * SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE), 3)
 
-def find_matches():
-    matches = []
-    # Проверка строк на совпадения
-    for y in range(GRID_SIZE):
-        for x in range(GRID_SIZE - 2):
-            if grid[y][x] == grid[y][x + 1] == grid[y][x + 2]:
-                matches.append(((y, x), (y, x + 1), (y, x + 2)))
 
-    # Проверка столбцов на совпадения
-    for x in range(GRID_SIZE):
-        for y in range(GRID_SIZE - 2):
-            if grid[y][x] == grid[y + 1][x] == grid[y + 2][x]:
-                matches.append(((y, x), (y + 1, x), (y + 2, x)))
+def get_square_at(pos):
+    x, y = pos
+    col = x // SQUARE_SIZE
+    row = y // SQUARE_SIZE
+    return row, col
 
-    return matches
 
-def remove_matches(matches):
-    for match in matches:
-        for (y, x) in match:
-            grid[y][x] = random.choice(COLORS)
+def swap_squares(pos1, pos2):
+    row1, col1 = pos1
+    row2, col2 = pos2
+    grid[row1][col1], grid[row2][col2] = grid[row2][col2], grid[row1][col1]
 
-def game_loop():
-    clock = pygame.time.Clock()
 
-    while True:
-        # Обработка событий
+def main():
+    global selected_square
+    running = True
+    while running:
+        screen.fill((0, 0, 0))  # очищаем экран
+        draw_grid()
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                pygame.quit()
-                sys.exit()
+                running = False
 
-        # Поиск совпадений
-        matches = find_matches()
-        if matches:
-            remove_matches(matches)
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                x, y = pygame.mouse.get_pos()
+                row, col = get_square_at((x, y))
 
-        # Отображение
-        screen.fill(WHITE)
-        draw_grid()
+                if selected_square is None:
+                    # Если ничего не выбрано, выбрали первый квадрат
+                    selected_square = (row, col)
+                else:
+                    # Если уже есть выбранный квадрат, пробуем поменять местами
+                    if (row, col) != selected_square:
+                        swap_squares(selected_square, (row, col))
+                    # Сбросить выбранный квадрат после обмена
+                    selected_square = None
+
         pygame.display.flip()
 
-        # Ограничение FPS
-        clock.tick(FPS)
 
 if __name__ == "__main__":
-    game_loop()
+    main()
+    pygame.quit()
