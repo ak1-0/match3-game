@@ -51,6 +51,40 @@ def swap_squares(pos1, pos2):
     grid[row1][col1], grid[row2][col2] = grid[row2][col2], grid[row1][col1]
 
 
+def check_matches():
+    to_remove = set()
+
+    # Проверяем горизонтальные совпадения
+    for row in range(ROWS):
+        for col in range(COLS - 2):  # Ограничиваем, чтобы не выходить за границы
+            if grid[row][col] == grid[row][col + 1] == grid[row][col + 2]:
+                to_remove.update([(row, col), (row, col + 1), (row, col + 2)])
+
+    # Проверяем вертикальные совпадения
+    for col in range(COLS):
+        for row in range(ROWS - 2):  # Ограничиваем, чтобы не выходить за границы
+            if grid[row][col] == grid[row + 1][col] == grid[row + 2][col]:
+                to_remove.update([(row, col), (row + 1, col), (row + 2, col)])
+
+    # Удаляем совпавшие квадратики
+    for row, col in to_remove:
+        grid[row][col] = None
+
+    return to_remove
+
+
+def fill_empty_spaces():
+    for col in range(COLS):
+        # Сдвигаем элементы вниз, заполняя пустые места
+        empty_spaces = [row for row in range(ROWS) if grid[row][col] is None]
+        for empty_row in empty_spaces:
+            # Все элементы сверху падают вниз
+            for row in range(empty_row, 0, -1):
+                grid[row][col] = grid[row - 1][col]
+            # Генерируем новый цвет для пустых ячеек сверху
+            grid[0][col] = random.choice(COLORS)
+
+
 def main():
     global selected_square
     running = True
@@ -73,6 +107,14 @@ def main():
                     # Если уже есть выбранный квадрат, пробуем поменять местами
                     if (row, col) != selected_square:
                         swap_squares(selected_square, (row, col))
+                        # Проверяем совпадения
+                        to_remove = check_matches()
+                        if to_remove:
+                            # Если есть совпадения, убираем и заполняем пустые места
+                            fill_empty_spaces()
+                        else:
+                            # Если совпадений нет, возвращаем назад
+                            swap_squares(selected_square, (row, col))
                     # Сбросить выбранный квадрат после обмена
                     selected_square = None
 
