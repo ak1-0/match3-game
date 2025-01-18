@@ -85,6 +85,16 @@ def fill_empty_spaces():
             grid[0][col] = random.choice(COLORS)
 
 
+def remove_matches():
+    while True:
+        # Проверяем совпадения
+        to_remove = check_matches()
+        if not to_remove:
+            break  # Если совпадений больше нет, выходим из цикла
+        # Убираем совпадения и заполняем пустые места
+        fill_empty_spaces()
+
+
 def main():
     global selected_square
     running = True
@@ -107,14 +117,8 @@ def main():
                     # Если уже есть выбранный квадрат, пробуем поменять местами
                     if (row, col) != selected_square:
                         swap_squares(selected_square, (row, col))
-                        # Проверяем совпадения
-                        to_remove = check_matches()
-                        if to_remove:
-                            # Если есть совпадения, убираем и заполняем пустые места
-                            fill_empty_spaces()
-                        else:
-                            # Если совпадений нет, возвращаем назад
-                            swap_squares(selected_square, (row, col))
+                        # Проверяем совпадения и удаляем их
+                        remove_matches()
                     # Сбросить выбранный квадрат после обмена
                     selected_square = None
 
