@@ -79,12 +79,14 @@ def add_animation(row, col, action):
 
 def animate():
     global animations
+    finished = True  # Флаг для проверки, завершились ли все анимации
+
     for animation in animations[:]:
         row, col = animation["row"], animation["col"]
         action = animation["action"]
 
         # Пропускаем, если в grid[row][col] значение None
-        if grid[row][col] is None:
+        if grid[row][col] is None and action == "fade":
             animations.remove(animation)
             continue
 
@@ -107,6 +109,10 @@ def animate():
         if animation["progress"] >= 1:
             animations.remove(animation)
 
+    if animations:
+        finished = False  # Если анимации есть, значит они еще не завершились
+
+    return finished
 
 def fill_empty_spaces():
     for col in range(COLS):
@@ -118,13 +124,23 @@ def fill_empty_spaces():
             grid[0][col] = random.choice(COLORS)
 
 
-def remove_matches():
+def remove_single_match():
+    """Удаляет только одну последовательность совпадений."""
     to_remove = check_matches()
     if not to_remove:
-        return False
+        return False  # Если совпадений нет, выходим
 
+    # Берем только первую найденную группу совпадений
+    first_match = set()
+    first_color = None
     for row, col in to_remove:
-        if grid[row][col] is not None:  # Проверяем, что ячейка содержит цвет
+        if first_color is None:
+            first_color = grid[row][col]
+        if grid[row][col] == first_color:
+            first_match.add((row, col))
+
+    for row, col in first_match:
+        if grid[row][col] is not None:
             add_animation(row, col, "fade")
             grid[row][col] = None
 
@@ -133,39 +149,48 @@ def remove_matches():
 
 def main():
     global selected_square
-    clock = pygame.time.Clock()
     running = True
+    state = "waiting"  # Текущее состояние игры
 
     while running:
         screen.fill((0, 0, 0))  # очищаем экран
         draw_grid()
-        animate()
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
 
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                if not animations:  # Ждём, пока анимации завершатся
-                    x, y = pygame.mouse.get_pos()
-                    row, col = get_square_at((x, y))
+            if state == "waiting" and event.type == pygame.MOUSEBUTTONDOWN:
+                x, y = pygame.mouse.get_pos()
+                row, col = get_square_at((x, y))
 
-                    if selected_square is None:
-                        selected_square = (row, col)
+                if selected_square is None:
+                    selected_square = (row, col)
+                else:
+                    if (row, col) != selected_square:
+                        swap_squares(selected_square, (row, col))
+                        selected_square = None
+                        state = "removing"
                     else:
-                        if (row, col) != selected_square:
-                            swap_squares(selected_square, (row, col))
-                            if not remove_matches():
-                                swap_squares(selected_square, (row, col))
                         selected_square = None
 
-        if not animations:
-            fill_empty_spaces()
+        # Управляем состояниями
+        if state == "removing":
+            if animate():  # Ждем завершения анимации
+                if remove_single_match():
+                    state = "falling"
+                else:
+                    state = "waiting"
+
+        elif state == "falling":
+            if animate():  # Ждем завершения анимации падения
+                fill_empty_spaces()
+                if not check_matches():  # Если нет совпадений, ждем действия игрока
+                    state = "waiting"
+                else:
+                    state = "removing"
 
         pygame.display.flip()
-        clock.tick(60)
-
-    pygame.quit()
 
 
 if __name__ == "__main__":
