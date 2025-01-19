@@ -1,5 +1,6 @@
 import pygame
 import random
+import time
 
 # Инициализация Pygame
 pygame.init()
@@ -35,7 +36,7 @@ def draw_grid():
     for row in range(ROWS):
         for col in range(COLS):
             color = grid[row][col]
-            if color:
+            if color:  # Рисуем только, если значение не None
                 pygame.draw.rect(screen, color, (col * SQUARE_SIZE, row * SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE))
                 pygame.draw.rect(screen, WHITE, (col * SQUARE_SIZE, row * SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE), 3)
 
@@ -79,40 +80,44 @@ def add_animation(row, col, action):
 
 def animate():
     global animations
-    finished = True  # Флаг для проверки, завершились ли все анимации
+    finished = True
 
     for animation in animations[:]:
         row, col = animation["row"], animation["col"]
         action = animation["action"]
 
-        # Пропускаем, если в grid[row][col] значение None
         if grid[row][col] is None and action == "fade":
             animations.remove(animation)
             continue
 
         if action == "fade":
             alpha = 255 - int(255 * animation["progress"])
-            surface = pygame.Surface((SQUARE_SIZE, SQUARE_SIZE))
+            surface = pygame.Surface((SQUARE_SIZE, SQUARE_SIZE), pygame.SRCALPHA)
             surface.set_alpha(alpha)
             surface.fill(grid[row][col])
             screen.blit(surface, (col * SQUARE_SIZE, row * SQUARE_SIZE))
 
         elif action == "fall":
             y_offset = int(SQUARE_SIZE * animation["progress"])
-            pygame.draw.rect(
-                screen,
-                grid[row][col],
-                (col * SQUARE_SIZE, row * SQUARE_SIZE - y_offset, SQUARE_SIZE, SQUARE_SIZE),
-            )
+            if grid[row][col] is not None:
+                pygame.draw.rect(
+                    screen,
+                    grid[row][col],
+                    (col * SQUARE_SIZE, row * SQUARE_SIZE - y_offset, SQUARE_SIZE, SQUARE_SIZE),
+                )
 
         animation["progress"] += 0.05
         if animation["progress"] >= 1:
+            row, col = animation["row"], animation["col"]
+            if animation["action"] == "fade":
+                grid[row][col] = None
             animations.remove(animation)
 
     if animations:
-        finished = False  # Если анимации есть, значит они еще не завершились
+        finished = False
 
     return finished
+
 
 def fill_empty_spaces():
     for col in range(COLS):
@@ -142,7 +147,7 @@ def remove_single_match():
     for row, col in first_match:
         if grid[row][col] is not None:
             add_animation(row, col, "fade")
-            grid[row][col] = None
+            # grid[row][col] = None  # Убираем изменение здесь
 
     return True
 
@@ -151,6 +156,8 @@ def main():
     global selected_square
     running = True
     state = "waiting"  # Текущее состояние игры
+    last_remove_time = time.time()  # Время последнего удаления
+    delay_between_removals = 0.5  # Задержка в секундах между удалениями
 
     while running:
         screen.fill((0, 0, 0))  # очищаем экран
@@ -176,11 +183,12 @@ def main():
 
         # Управляем состояниями
         if state == "removing":
-            if animate():  # Ждем завершения анимации
+            # Ждем завершения анимации и добавляем задержку
+            if animate() and time.time() - last_remove_time >= delay_between_removals:
                 if remove_single_match():
-                    state = "falling"
+                    last_remove_time = time.time()  # Обновляем время удаления
                 else:
-                    state = "waiting"
+                    state = "falling"  # Переходим к падению после удаления всех совпадений
 
         elif state == "falling":
             if animate():  # Ждем завершения анимации падения
