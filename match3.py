@@ -124,8 +124,9 @@ def remove_matches():
         return False
 
     for row, col in to_remove:
-        add_animation(row, col, "fade")
-        grid[row][col] = None
+        if grid[row][col] is not None:  # Проверяем, что ячейка содержит цвет
+            add_animation(row, col, "fade")
+            grid[row][col] = None
 
     return True
 
